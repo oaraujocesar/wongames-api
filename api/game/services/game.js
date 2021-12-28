@@ -69,6 +69,43 @@ const createManyToManyData = async (products) => {
   ]);
 };
 
+const createGame = async (product) => {
+  console.log(product, '@@CREATE GAME')
+  return await strapi.services.game.create({
+    name: product.title,
+    slug: product.slug.replace(/_/g, "-"),
+    price: product.price.amount,
+    release_date: new Date(
+      Number(product.globalReleaseDate) * 1000
+    ).toISOString(),
+    categories: await Promise.all(
+      product.genres.map((name) => getByName(name, "category"))
+    ),
+    platforms: await Promise.all(
+      product.supportedOperatingSystems.map((name) =>
+        getByName(name, "platform")
+      )
+    ),
+    developers: [await getByName(product.developer, "developer")],
+    publisher: await getByName(product.publisher, "publisher"),
+    ...(await getGameInfo(product.slug)),
+  });
+};
+
+const createGames = async (products) => {
+  await Promise.all(
+    products.map(async (product) => {
+      const isRegistered = await getByName(product.title, "game");
+
+      if (!isRegistered) {
+        console.info(`Creating "${product.title}"...`);
+
+        return await createGame(product);
+      }
+    })
+  );
+};
+
 module.exports = {
   populate: async (params) => {
     const gogApiURL = `https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&sort=popularity`;
@@ -77,6 +114,7 @@ module.exports = {
       data: { products },
     } = await axios.get(gogApiURL);
 
-    await createManyToManyData([products[4], products[5]])
+    await createManyToManyData([products[4], products[5]]);
+    await createGames([products[4], products[5]]);
   },
 };
