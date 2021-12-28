@@ -1,8 +1,18 @@
-'use strict';
+"use strict";
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-services)
  * to customize this service
  */
 
-module.exports = {};
+const axios = require('axios')
+
+module.exports = {
+  populate: async (params) => {
+    const gogApiURL = `https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&sort=popularity`
+
+    const { data: { products } } = await axios.get(gogApiURL)
+
+    console.log(products[0])
+  },
+};
