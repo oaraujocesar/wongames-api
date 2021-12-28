@@ -40,6 +40,35 @@ const create = async (name, entityName) => {
   }
 };
 
+const createManyToManyData = async (products) => {
+  const developers = {},
+    publishers = {},
+    categories = {},
+    platforms = {};
+
+  products.forEach((product) => {
+    const { developer, publisher, genres, supportedOperatingSystems } = product;
+
+    genres?.forEach((item) => {
+      categories[item] = true;
+    });
+
+    supportedOperatingSystems?.forEach((item) => {
+      platforms[item] = true;
+    });
+
+    developers[developer] = true;
+    publishers[publisher] = true;
+  });
+
+  return Promise.all([
+    ...Object.keys(developers).map((name) => create(name, "developer")),
+    ...Object.keys(publishers).map((name) => create(name, "publisher")),
+    ...Object.keys(categories).map((name) => create(name, "category")),
+    ...Object.keys(platforms).map((name) => create(name, "platform")),
+  ]);
+};
+
 module.exports = {
   populate: async (params) => {
     const gogApiURL = `https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&sort=popularity`;
@@ -48,10 +77,6 @@ module.exports = {
       data: { products },
     } = await axios.get(gogApiURL);
 
-    const publisher = products[3].publisher;
-    const developer = products[3].developer;
-
-    await create(publisher, "publisher");
-    await create(developer, "developer");
+    await createManyToManyData([products[4], products[5]])
   },
 };
