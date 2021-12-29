@@ -26,8 +26,8 @@ const getGameInfo = async (slug) => {
 
     return {
       rating: "BR0",
-      short_description: description.textContent.slice(0, 160),
-      description: description.innerHTML,
+      short_description: description.textContent.slice(0, 160) ?? '',
+      description: description.innerHTML ?? '',
     };
   } catch (error) {
     console.error("getGameInfo", Exception(error));
