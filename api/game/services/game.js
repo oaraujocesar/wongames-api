@@ -8,6 +8,11 @@
 const axios = require("axios");
 const jsDOM = require("jsdom");
 const slugify = require("slugify");
+const FormData = require("form-data");
+
+const timeout = (ms) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
 
 const getGameInfo = async (slug) => {
   const { JSDOM } = jsDOM,
@@ -70,7 +75,6 @@ const createManyToManyData = async (products) => {
 };
 
 const createGame = async (product) => {
-  console.log(product, '@@CREATE GAME')
   return await strapi.services.game.create({
     name: product.title,
     slug: product.slug.replace(/_/g, "-"),
@@ -92,6 +96,30 @@ const createGame = async (product) => {
   });
 };
 
+const setImage = async ({ image, game, field = "cover" }) => {
+  const URL = `https:${image}_bg_crop_1680x655.jpg`,
+    { data } = await axios.get(URL, { responseType: "arraybuffer" }),
+    buffer = Buffer.from(data, "base64");
+
+  const formData = new FormData();
+
+  formData.append("refId", game.id);
+  formData.append("ref", "game");
+  formData.append("field", field);
+  formData.append("files", buffer, { filename: `${game.slug}.jpg` });
+
+  console.info(`Uploading ${field} image: ${game.slug}.jpg`);
+
+  await axios({
+    method: "POST",
+    url: `http://${strapi.config.host}:${strapi.config.port}/upload`,
+    data: formData,
+    headers: {
+      "Content-Type": `multipart/form-data; boundary=${formData._boundary}`,
+    },
+  });
+};
+
 const createGames = async (products) => {
   await Promise.all(
     products.map(async (product) => {
@@ -100,7 +128,19 @@ const createGames = async (products) => {
       if (!isRegistered) {
         console.info(`Creating "${product.title}"...`);
 
-        return await createGame(product);
+        const game = await createGame(product);
+
+        await setImage({ image: product.image, game });
+
+        await Promise.all(
+          product.gallery
+            .slice(0, 5)
+            .map((url) => setImage({ image: url, game, field: "gallery" }))
+        );
+
+        await timeout(1500);
+
+        return game;
       }
     })
   );
